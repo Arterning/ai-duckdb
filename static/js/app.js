@@ -72,13 +72,13 @@ $(document).ready(function() {
         if (!file) return;
 
         // 检查文件类型
-        const allowedTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-        const allowedExtensions = ['.csv', '.xls', '.xlsx', '.parquet'];
+        const allowedTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/json'];
+        const allowedExtensions = ['.csv', '.xls', '.xlsx', '.parquet', '.json'];
 
         const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
 
         if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
-            showError('不支持的文件类型。请选择 CSV, Excel 或 Parquet 文件。');
+            showError('不支持的文件类型。请选择 CSV, Excel, Parquet 或 JSON 文件。');
             return;
         }
 

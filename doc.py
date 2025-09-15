@@ -24,9 +24,9 @@ async def analyze_data_with_ai(*, file_path: str, question: str):
 
     # 检查文件类型是否支持数据分析
     file_suffix = os.path.splitext(file_path)[1].lower()
-    if file_suffix not in ['.parquet', '.csv', '.xlsx', '.xls']:
+    if file_suffix not in ['.parquet', '.csv', '.xlsx', '.xls', '.json']:
         return {
-            "error": "文件类型不支持数据分析，仅支持 parquet、csv、xlsx、xls 文件"
+            "error": "文件类型不支持数据分析，仅支持 parquet、csv、xlsx、xls、json 文件"
         }
 
     try:
@@ -45,6 +45,33 @@ async def analyze_data_with_ai(*, file_path: str, question: str):
         elif file_suffix in ['.xlsx', '.xls']:
             engine = "openpyxl" if file_suffix == '.xlsx' else "xlrd"
             df = pd.read_excel(BytesIO(file_bytes), engine=engine)
+        elif file_suffix == '.json':
+            # 尝试不同的JSON读取方式
+            try:
+                # 先尝试按行读取（每行一个JSON对象）
+                df = pd.read_json(BytesIO(file_bytes), lines=True)
+            except:
+                try:
+                    # 再尝试作为JSON数组读取
+                    df = pd.read_json(BytesIO(file_bytes))
+                except:
+                    # 最后尝试手动解析JSON
+                    import json
+                    text_content = file_bytes.decode('utf-8')
+                    json_data = json.loads(text_content)
+
+                    if isinstance(json_data, list):
+                        df = pd.DataFrame(json_data)
+                    elif isinstance(json_data, dict):
+                        # 如果是字典，尝试将其转换为DataFrame
+                        if all(isinstance(v, list) for v in json_data.values()):
+                            # 如果所有值都是列表，作为列数据处理
+                            df = pd.DataFrame(json_data)
+                        else:
+                            # 否则作为单行数据处理
+                            df = pd.DataFrame([json_data])
+                    else:
+                        raise ValueError("不支持的JSON格式")
         
         if df is None or df.empty:
             return {

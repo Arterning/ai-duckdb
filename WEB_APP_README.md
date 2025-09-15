@@ -6,7 +6,7 @@
 
 - 📊 **智能数据分析**: 使用Gemini AI分析上传的数据文件
 - 💬 **聊天界面**: 类似聊天应用的用户体验
-- 📁 **多格式支持**: 支持CSV、Excel、Parquet文件格式
+- 📁 **多格式支持**: 支持CSV、Excel、Parquet、JSON文件格式
 - 🌙 **Dark科技风格**: 现代化的深色主题界面
 - 📱 **响应式设计**: 适配不同屏幕尺寸
 - 📋 **历史记录**: 保存和查看之前的分析会话
@@ -52,7 +52,7 @@ python app.py
 
 1. **上传文件**:
    - 点击上传区域或拖拽文件到指定区域
-   - 支持CSV、Excel (.xlsx, .xls)、Parquet格式
+   - 支持CSV、Excel (.xlsx, .xls)、Parquet、JSON格式
 
 2. **提出问题**:
    - 在文本框中输入你想要分析的问题
@@ -98,25 +98,33 @@ ai-duckdb/
 │   └── js/
 │       └── app.js         # 前端JavaScript
 ├── uploads/               # 临时文件上传目录
-└── sample_sales_data.csv  # 示例数据文件
+├── sample_sales_data.csv  # 示例CSV数据文件
+└── sample_products.json   # 示例JSON数据文件
 ```
 
 ## 示例查询
 
-使用提供的示例数据文件，你可以尝试以下问题：
-
+### 使用CSV示例文件 (sample_sales_data.csv)：
 - "显示销售额最高的前5个产品"
 - "按城市统计总销售额"
 - "找出购买数量超过2的订单"
 - "计算每个销售代表的平均佣金率"
 - "显示2024年1月的所有电子产品销售"
 
+### 使用JSON示例文件 (sample_products.json)：
+- "显示价格最高的前5个产品"
+- "按品牌统计产品数量"
+- "找出评分超过4.5的所有产品"
+- "显示库存少于30的产品"
+- "按类别统计平均价格"
+
 ## 注意事项
 
 - 文件大小限制：16MB
-- 支持的文件格式：CSV, Excel (.xlsx, .xls), Parquet
+- 支持的文件格式：CSV, Excel (.xlsx, .xls), Parquet, JSON
 - 需要有效的Gemini API密钥
 - 生成的SQL查询仅支持SELECT操作，确保数据安全
+- JSON文件支持多种格式：对象数组、嵌套JSON等
 
 ## 故障排除
 

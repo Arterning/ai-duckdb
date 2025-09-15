@@ -1,0 +1,112 @@
+[
+  {
+    "id": 1,
+    "name": "iPhone 14",
+    "category": "Electronics",
+    "price": 999.99,
+    "stock": 50,
+    "rating": 4.8,
+    "description": "最新的iPhone手机",
+    "brand": "Apple",
+    "release_date": "2022-09-16"
+  },
+  {
+    "id": 2,
+    "name": "MacBook Pro",
+    "category": "Electronics",
+    "price": 2499.99,
+    "stock": 25,
+    "rating": 4.9,
+    "description": "高性能笔记本电脑",
+    "brand": "Apple",
+    "release_date": "2023-01-15"
+  },
+  {
+    "id": 3,
+    "name": "Nike运动鞋",
+    "category": "Fashion",
+    "price": 159.99,
+    "stock": 100,
+    "rating": 4.5,
+    "description": "舒适的运动鞋",
+    "brand": "Nike",
+    "release_date": "2023-03-20"
+  },
+  {
+    "id": 4,
+    "name": "咖啡机",
+    "category": "Home",
+    "price": 299.99,
+    "stock": 30,
+    "rating": 4.3,
+    "description": "全自动咖啡机",
+    "brand": "Breville",
+    "release_date": "2023-02-10"
+  },
+  {
+    "id": 5,
+    "name": "无线耳机",
+    "category": "Electronics",
+    "price": 199.99,
+    "stock": 75,
+    "rating": 4.6,
+    "description": "降噪无线耳机",
+    "brand": "Sony",
+    "release_date": "2023-04-05"
+  },
+  {
+    "id": 6,
+    "name": "羽绒服",
+    "category": "Fashion",
+    "price": 399.99,
+    "stock": 40,
+    "rating": 4.4,
+    "description": "保暖羽绒服",
+    "brand": "North Face",
+    "release_date": "2023-01-01"
+  },
+  {
+    "id": 7,
+    "name": "洗衣机",
+    "category": "Home",
+    "price": 799.99,
+    "stock": 15,
+    "rating": 4.2,
+    "description": "智能洗衣机",
+    "brand": "LG",
+    "release_date": "2023-02-28"
+  },
+  {
+    "id": 8,
+    "name": "iPad Air",
+    "category": "Electronics",
+    "price": 599.99,
+    "stock": 60,
+    "rating": 4.7,
+    "description": "轻薄平板电脑",
+    "brand": "Apple",
+    "release_date": "2023-03-15"
+  },
+  {
+    "id": 9,
+    "name": "跑步机",
+    "category": "Sports",
+    "price": 1299.99,
+    "stock": 12,
+    "rating": 4.1,
+    "description": "家用跑步机",
+    "brand": "NordicTrack",
+    "release_date": "2023-01-20"
+  },
+  {
+    "id": 10,
+    "name": "智能手表",
+    "category": "Electronics",
+    "price": 249.99,
+    "stock": 80,
+    "rating": 4.3,
+    "description": "健康监测智能手表",
+    "brand": "Fitbit",
+    "release_date": "2023-04-10"
+  }
+]

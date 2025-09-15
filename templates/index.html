@@ -191,7 +191,7 @@
                             <span class="font-semibold text-blue-400">AI助手</span>
                         </div>
                         <div class="text-gray-300">
-                            欢迎使用AI数据分析助手！上传您的数据文件（支持CSV、Excel、Parquet格式），然后提出问题，我将为您生成SQL查询并分析数据。
+                            欢迎使用AI数据分析助手！上传您的数据文件（支持CSV、Excel、Parquet、JSON格式），然后提出问题，我将为您生成SQL查询并分析数据。
                         </div>
                     </div>
                 </div>
@@ -201,12 +201,12 @@
             <div class="border-t border-gray-700 p-6">
                 <form id="uploadForm" class="space-y-4">
                     <!-- 文件上传区域 -->
-                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.parquet" class="hidden">
+                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.parquet,.json" class="hidden">
                     <div class="drag-area rounded-lg p-6 text-center cursor-pointer" id="dragArea">
                         <div id="dropText">
                             <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
                             <p class="text-gray-400">点击选择文件或拖拽到此处</p>
-                            <p class="text-sm text-gray-500 mt-1">支持 CSV, Excel, Parquet 格式</p>
+                            <p class="text-sm text-gray-500 mt-1">支持 CSV, Excel, Parquet, JSON 格式</p>
                         </div>
                         <div id="fileInfo" class="hidden">
                             <i class="fas fa-file text-3xl text-green-400 mb-2"></i>

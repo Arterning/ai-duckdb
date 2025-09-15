@@ -12,7 +12,7 @@ app.secret_key = 'your-secret-key-change-this'
 
 # 配置文件上传
 UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls', 'parquet'}
+ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls', 'parquet', 'json'}
 MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -119,7 +119,7 @@ def upload_file():
             return jsonify({'error': '没有选择文件'}), 400
 
         if not allowed_file(file.filename):
-            return jsonify({'error': '不支持的文件类型，仅支持 CSV, Excel, Parquet'}), 400
+            return jsonify({'error': '不支持的文件类型，仅支持 CSV, Excel, Parquet, JSON'}), 400
 
         if not question.strip():
             return jsonify({'error': '请输入问题'}), 400
