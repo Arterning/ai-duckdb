@@ -140,7 +140,7 @@ async def analyze_data_with_ai(*, file_path: str, question: str):
         }
         
     except Exception as e:
-        log.error(f"数据分析出错: {str(e)}")
+        print(f"数据分析出错: {str(e)}")
         return {
             "error": f"数据分析出错: {str(e)}"
         }

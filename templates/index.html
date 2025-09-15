@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI数据分析助手</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <!-- Marked.js for markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        /* 自定义滚动条样式 */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+        /* 科技风格动画 */
+        .tech-glow {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .loading-dots::after {
+            content: '';
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { content: ''; }
+            25% { content: '.'; }
+            50% { content: '..'; }
+            75% { content: '...'; }
+            100% { content: ''; }
+        }
+
+        /* 文件拖拽区域样式 */
+        .drag-area {
+            border: 2px dashed #374151;
+            transition: all 0.3s ease;
+        }
+
+        .drag-area.drag-over {
+            border-color: #3b82f6;
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+
+        /* Markdown样式 */
+        .markdown-content {
+            line-height: 1.6;
+        }
+
+        .markdown-content h2 {
+            color: #60a5fa;
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .markdown-content h3 {
+            color: #34d399;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .markdown-content pre {
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+            overflow-x: auto;
+            margin: 0.5rem 0;
+        }
+
+        .markdown-content code {
+            background-color: #1f2937;
+            color: #fbbf24;
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+        }
+
+        .markdown-content pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+
+        .markdown-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.5rem 0;
+            font-size: 0.875rem;
+        }
+
+        .markdown-content th,
+        .markdown-content td {
+            border: 1px solid #374151;
+            padding: 0.5rem;
+            text-align: left;
+        }
+
+        .markdown-content th {
+            background-color: #374151;
+            color: #f3f4f6;
+            font-weight: bold;
+        }
+
+        .markdown-content td {
+            background-color: #1f2937;
+        }
+
+        .markdown-content ul,
+        .markdown-content ol {
+            padding-left: 1.5rem;
+            margin: 0.5rem 0;
+        }
+
+        .markdown-content li {
+            margin: 0.25rem 0;
+        }
+
+        .markdown-content strong {
+            color: #f59e0b;
+            font-weight: bold;
+        }
+
+        .markdown-content em {
+            color: #9ca3af;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-mono">
+    <div class="flex h-screen">
+        <!-- 左侧历史记录面板 -->
+        <div class="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
+            <!-- 头部 -->
+            <div class="p-4 border-b border-gray-700">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-bold text-blue-400">
+                        <i class="fas fa-robot mr-2"></i>AI数据分析
+                    </h2>
+                    <button id="newSessionBtn" class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm transition-colors">
+                        <i class="fas fa-plus mr-1"></i>新对话
+                    </button>
+                </div>
+            </div>
+
+            <!-- 历史记录列表 -->
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-4">
+                <div id="chatHistory" class="space-y-2">
+                    <!-- 历史记录项将通过JS动态添加 -->
+                    <div class="text-gray-500 text-center text-sm py-8">
+                        <i class="fas fa-history text-2xl mb-2 block"></i>
+                        暂无聊天记录
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧主聊天区域 -->
+        <div class="flex-1 flex flex-col">
+            <!-- 聊天消息区域 -->
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-6">
+                <div id="chatMessages" class="space-y-4">
+                    <!-- 欢迎消息 -->
+                    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                        <div class="flex items-center mb-2">
+                            <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center mr-3">
+                                <i class="fas fa-robot text-sm"></i>
+                            </div>
+                            <span class="font-semibold text-blue-400">AI助手</span>
+                        </div>
+                        <div class="text-gray-300">
+                            欢迎使用AI数据分析助手！上传您的数据文件（支持CSV、Excel、Parquet格式），然后提出问题，我将为您生成SQL查询并分析数据。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="border-t border-gray-700 p-6">
+                <form id="uploadForm" class="space-y-4">
+                    <!-- 文件上传区域 -->
+                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.parquet" class="hidden">
+                    <div class="drag-area rounded-lg p-6 text-center cursor-pointer" id="dragArea">
+                        <div id="dropText">
+                            <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                            <p class="text-gray-400">点击选择文件或拖拽到此处</p>
+                            <p class="text-sm text-gray-500 mt-1">支持 CSV, Excel, Parquet 格式</p>
+                        </div>
+                        <div id="fileInfo" class="hidden">
+                            <i class="fas fa-file text-3xl text-green-400 mb-2"></i>
+                            <p class="text-green-400" id="fileName"></p>
+                            <button type="button" id="removeFile" class="text-red-400 hover:text-red-300 text-sm mt-2">
+                                <i class="fas fa-trash mr-1"></i>移除文件
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 问题输入 -->
+                    <div class="flex space-x-2">
+                        <div class="flex-1">
+                            <textarea
+                                id="questionInput"
+                                placeholder="请输入您想要分析的问题..."
+                                class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                rows="3"
+                                required
+                            ></textarea>
+                        </div>
+                        <button
+                            type="submit"
+                            id="submitBtn"
+                            class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-6 py-3 rounded-lg font-semibold transition-colors tech-glow"
+                        >
+                            <i class="fas fa-paper-plane mr-2"></i>
+                            <span id="submitText">分析</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载覆盖层 -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg p-6 text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p class="text-gray-300">AI正在分析您的数据<span class="loading-dots"></span></p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
