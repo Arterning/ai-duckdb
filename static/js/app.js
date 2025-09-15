@@ -1,11 +1,14 @@
 $(document).ready(function() {
     let selectedFile = null;
     let chatHistory = [];
+    let allSessions = [];
+    let currentSessionId = null;
 
     // 初始化
     init();
 
     function init() {
+        loadAllSessions();
         loadChatHistory();
         setupEventHandlers();
     }
@@ -142,7 +145,7 @@ $(document).ready(function() {
                 showLoading(false);
                 if (response.success) {
                     addMessage('ai', response.markdown_result, null, response.chat_id);
-                    loadChatHistory();
+                    loadAllSessions(); // 重新加载会话列表
                     resetForm();
                 } else {
                     showError(response.error || '分析失败');
@@ -207,23 +210,35 @@ $(document).ready(function() {
     }
 
 
+    // 加载所有会话
+    function loadAllSessions() {
+        $.get('/api/sessions')
+            .done(function(response) {
+                allSessions = response.sessions || [];
+                renderSessionList();
+            })
+            .fail(function() {
+                console.error('加载会话列表失败');
+            });
+    }
+
     // 加载聊天历史
     function loadChatHistory() {
         $.get('/api/chat_history')
             .done(function(response) {
                 chatHistory = response.history || [];
-                renderChatHistory();
+                renderCurrentChatHistory();
             })
             .fail(function() {
                 console.error('加载聊天历史失败');
             });
     }
 
-    // 渲染聊天历史
-    function renderChatHistory() {
+    // 渲染会话列表
+    function renderSessionList() {
         const historyContainer = $('#chatHistory');
 
-        if (chatHistory.length === 0) {
+        if (allSessions.length === 0) {
             historyContainer.html(`
                 <div class="text-gray-500 text-center text-sm py-8">
                     <i class="fas fa-history text-2xl mb-2 block"></i>
@@ -234,65 +249,104 @@ $(document).ready(function() {
         }
 
         let historyHtml = '';
-        chatHistory.forEach(chat => {
-            const date = new Date(chat.timestamp).toLocaleString('zh-CN');
-            const preview = chat.question.length > 30 ? chat.question.substring(0, 30) + '...' : chat.question;
+        allSessions.forEach(sessionInfo => {
+            const date = new Date(sessionInfo.updated_at).toLocaleString('zh-CN');
+            const title = sessionInfo.latest_question ?
+                (sessionInfo.latest_question.length > 25 ? sessionInfo.latest_question.substring(0, 25) + '...' : sessionInfo.latest_question) :
+                '新会话';
+            const filename = sessionInfo.latest_filename || '';
 
             historyHtml += `
-                <div class="bg-gray-700 hover:bg-gray-600 rounded p-3 cursor-pointer transition-colors" data-chat-id="${chat.id}">
-                    <div class="flex items-center mb-1">
-                        <i class="fas fa-file-alt mr-2 text-blue-400 text-xs"></i>
-                        <span class="text-xs text-gray-400">${chat.filename}</span>
+                <div class="bg-gray-700 hover:bg-gray-600 rounded p-3 cursor-pointer transition-colors session-item" data-session-id="${sessionInfo.id}">
+                    <div class="flex items-center justify-between mb-1">
+                        <div class="flex items-center">
+                            <i class="fas fa-comments mr-2 text-blue-400 text-xs"></i>
+                            <span class="text-xs text-gray-400">${sessionInfo.chat_count} 条对话</span>
+                        </div>
+                        <span class="text-xs text-gray-500">${new Date(sessionInfo.updated_at).toLocaleDateString('zh-CN')}</span>
                     </div>
-                    <div class="text-sm text-gray-200 mb-1">${escapeHtml(preview)}</div>
-                    <div class="text-xs text-gray-500">${date}</div>
+                    <div class="text-sm text-gray-200 mb-1">${escapeHtml(title)}</div>
+                    ${filename ? `<div class="text-xs text-gray-400"><i class="fas fa-file mr-1"></i>${filename}</div>` : ''}
                 </div>
             `;
         });
 
         historyContainer.html(historyHtml);
 
-        // 点击历史记录显示详情
-        $('.bg-gray-700[data-chat-id]').on('click', function() {
-            const chatId = $(this).data('chat-id');
-            showChatDetail(chatId);
+        // 点击会话切换
+        $('.session-item').on('click', function() {
+            const sessionId = $(this).data('session-id');
+            switchToSession(sessionId);
         });
     }
 
-    // 显示聊天详情
-    function showChatDetail(chatId) {
-        const chat = chatHistory.find(c => c.id === chatId);
-        if (!chat) return;
+    // 渲染当前会话的聊天历史
+    function renderCurrentChatHistory() {
+        if (chatHistory.length === 0) {
+            // 显示欢迎消息
+            $('#chatMessages').html(`
+                <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <div class="flex items-center mb-2">
+                        <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-robot text-sm"></i>
+                        </div>
+                        <span class="font-semibold text-blue-400">AI助手</span>
+                    </div>
+                    <div class="text-gray-300">
+                        欢迎使用AI数据分析助手！上传您的数据文件（支持CSV、Excel、Parquet、JSON格式），然后提出问题，我将为您生成SQL查询并分析数据。
+                    </div>
+                </div>
+            `);
+            return;
+        }
 
-        // 清空当前聊天区域并显示选中的对话
+        // 清空聊天区域并重新渲染所有消息
         $('#chatMessages').empty();
-        addMessage('user', chat.question, chat.filename);
+        chatHistory.forEach(chat => {
+            addMessage('user', chat.question, chat.filename);
+            const content = chat.markdown_result || chat.result;
+            addMessage('ai', content, null, chat.id);
+        });
+    }
 
-        // 使用markdown_result如果存在，否则使用原始result
-        const content = chat.markdown_result || chat.result;
-        addMessage('ai', content, null, chat.id);
+    // 切换到指定会话
+    function switchToSession(sessionId) {
+        $.post(`/api/switch_session/${sessionId}`)
+            .done(function(response) {
+                if (response.success) {
+                    currentSessionId = sessionId;
+                    loadChatHistory();
+
+                    // 高亮当前选中的会话
+                    $('.session-item').removeClass('bg-blue-700');
+                    $(`.session-item[data-session-id="${sessionId}"]`).addClass('bg-blue-700');
+                }
+            })
+            .fail(function() {
+                showError('切换会话失败');
+            });
     }
 
     // 开始新会话
     function startNewSession() {
         $.post('/api/new_session')
-            .done(function() {
-                // 清空聊天区域
-                $('#chatMessages').html(`
-                    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                        <div class="flex items-center mb-2">
-                            <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center mr-3">
-                                <i class="fas fa-robot text-sm"></i>
-                            </div>
-                            <span class="font-semibold text-blue-400">AI助手</span>
-                        </div>
-                        <div class="text-gray-300">
-                            欢迎使用AI数据分析助手！上传您的数据文件，然后提出问题，我将为您生成SQL查询并分析数据。
-                        </div>
-                    </div>
-                `);
-                resetForm();
-                loadChatHistory();
+            .done(function(response) {
+                if (response.session_id) {
+                    currentSessionId = response.session_id;
+
+                    // 清空当前聊天区域
+                    chatHistory = [];
+                    renderCurrentChatHistory();
+
+                    // 重置表单
+                    resetForm();
+
+                    // 重新加载会话列表以显示新会话
+                    loadAllSessions();
+
+                    // 清除会话高亮
+                    $('.session-item').removeClass('bg-blue-700');
+                }
             })
             .fail(function() {
                 showError('创建新会话失败');

@@ -6,6 +6,7 @@ from datetime import datetime
 import asyncio
 from werkzeug.utils import secure_filename
 from doc import analyze_data_with_ai
+from database import ChatDatabase
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'
@@ -25,8 +26,8 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# 存储聊天历史（实际应用中应使用数据库）
-chat_sessions = {}
+# 初始化数据库
+db = ChatDatabase()
 
 def format_analysis_result(result):
     """将AI分析结果转换为markdown格式"""
@@ -142,7 +143,7 @@ def upload_file():
         if not session_id:
             session_id = str(uuid.uuid4())
             session['session_id'] = session_id
-            chat_sessions[session_id] = []
+            db.create_session(session_id)
 
         chat_record = {
             'id': str(uuid.uuid4()),
@@ -153,10 +154,8 @@ def upload_file():
             'markdown_result': markdown_result
         }
 
-        if session_id not in chat_sessions:
-            chat_sessions[session_id] = []
-
-        chat_sessions[session_id].append(chat_record)
+        # 保存到数据库
+        db.save_chat_record(session_id, chat_record)
 
         # 清理临时文件
         try:
@@ -177,17 +176,33 @@ def upload_file():
 @app.route('/api/chat_history')
 def get_chat_history():
     session_id = session.get('session_id')
-    if not session_id or session_id not in chat_sessions:
+    if not session_id:
         return jsonify({'history': []})
 
-    return jsonify({'history': chat_sessions[session_id]})
+    history = db.get_chat_history(session_id)
+    return jsonify({'history': history})
 
 @app.route('/api/new_session', methods=['POST'])
 def new_session():
     session_id = str(uuid.uuid4())
     session['session_id'] = session_id
-    chat_sessions[session_id] = []
+    db.create_session(session_id)
     return jsonify({'session_id': session_id})
+
+@app.route('/api/sessions')
+def get_all_sessions():
+    """获取所有会话列表"""
+    sessions = db.get_all_sessions()
+    return jsonify({'sessions': sessions})
+
+@app.route('/api/switch_session/<session_id>', methods=['POST'])
+def switch_session(session_id):
+    """切换到指定会话"""
+    if db.session_exists(session_id):
+        session['session_id'] = session_id
+        return jsonify({'success': True, 'session_id': session_id})
+    else:
+        return jsonify({'error': '会话不存在'}), 404
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
