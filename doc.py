@@ -4,9 +4,153 @@ import pyarrow.parquet as pq
 from io import BytesIO
 import os
 from google import genai
+import duckdb
 
 
-async def analyze_data_with_ai(*, file_path: str, question: str):
+async def analyze_file(*, file_path: str):
+    """分析文件并返回数据概要信息
+
+    Args:
+        file_path (str): 文件路径
+
+    Returns:
+        dict: 包含数据概要信息的字典
+    """
+    # 检查文件是否存在
+    if not os.path.exists(file_path):
+        return {
+            "error": "文件不存在"
+        }
+
+    try:
+        # 如果没有提供数据概要信息，则读取文件并生成
+        if data_info is None:
+            # 检查文件类型是否支持数据分析
+            file_suffix = os.path.splitext(file_path)[1].lower()
+            if file_suffix not in ['.parquet', '.csv', '.xlsx', '.xls', '.json']:
+                return {
+                    "error": "文件类型不支持数据分析，仅支持 parquet、csv、xlsx、xls、json 文件"
+                }
+
+            # 读取文件
+            with open(file_path, 'rb') as f:
+                file_bytes = f.read()
+            
+            # 根据文件类型加载数据到 pandas DataFrame
+            df = None
+            if file_suffix == '.parquet':
+                buffer = BytesIO(file_bytes)
+                table = pq.read_table(buffer)
+                df = table.to_pandas()
+            elif file_suffix == '.csv':
+                df = pd.read_csv(BytesIO(file_bytes))
+            elif file_suffix in ['.xlsx', '.xls']:
+                engine = "openpyxl" if file_suffix == '.xlsx' else "xlrd"
+                df = pd.read_excel(BytesIO(file_bytes), engine=engine)
+            elif file_suffix == '.json':
+                # 尝试不同的JSON读取方式
+                try:
+                    # 先尝试按行读取（每行一个JSON对象）
+                    df = pd.read_json(BytesIO(file_bytes), lines=True)
+                except:
+                    try:
+                        # 再尝试作为JSON数组读取
+                        df = pd.read_json(BytesIO(file_bytes))
+                    except:
+                        # 最后尝试手动解析JSON
+                        import json
+                        text_content = file_bytes.decode('utf-8')
+                        json_data = json.loads(text_content)
+
+                        if isinstance(json_data, list):
+                            df = pd.DataFrame(json_data)
+                        elif isinstance(json_data, dict):
+                            # 如果是字典，尝试将其转换为DataFrame
+                            if all(isinstance(v, list) for v in json_data.values()):
+                                # 如果所有值都是列表，作为列数据处理
+                                df = pd.DataFrame(json_data)
+                            else:
+                                # 否则作为单行数据处理
+                                df = pd.DataFrame([json_data])
+                        else:
+                            raise ValueError("不支持的JSON格式")
+            
+            if df is None or df.empty:
+                return {
+                    "error": "无法读取文件数据或文件为空"
+                }
+            
+            # 生成数据概要信息
+            data_info = {
+                "行数": len(df),
+                "列数": len(df.columns),
+                "列名": list(df.columns),
+                "数据类型": {col: str(dtype) for col, dtype in df.dtypes.items()},
+                "前5行数据": df.head().to_dict('records')
+            }
+        else:
+            # 如果提供了数据概要信息，则直接读取文件
+            file_suffix = os.path.splitext(file_path)[1].lower()
+            
+            # 读取文件
+            with open(file_path, 'rb') as f:
+                file_bytes = f.read()
+            
+            # 根据文件类型加载数据到 pandas DataFrame
+            df = None
+            if file_suffix == '.parquet':
+                buffer = BytesIO(file_bytes)
+                table = pq.read_table(buffer)
+                df = table.to_pandas()
+            elif file_suffix == '.csv':
+                df = pd.read_csv(BytesIO(file_bytes))
+            elif file_suffix in ['.xlsx', '.xls']:
+                engine = "openpyxl" if file_suffix == '.xlsx' else "xlrd"
+                df = pd.read_excel(BytesIO(file_bytes), engine=engine)
+            elif file_suffix == '.json':
+                # 尝试不同的JSON读取方式
+                try:
+                    # 先尝试按行读取（每行一个JSON对象）
+                    df = pd.read_json(BytesIO(file_bytes), lines=True)
+                except:
+                    try:
+                        # 再尝试作为JSON数组读取
+                        df = pd.read_json(BytesIO(file_bytes))
+                    except:
+                        # 最后尝试手动解析JSON
+                        import json
+                        text_content = file_bytes.decode('utf-8')
+                        json_data = json.loads(text_content)
+
+                        if isinstance(json_data, list):
+                            df = pd.DataFrame(json_data)
+                        elif isinstance(json_data, dict):
+                            # 如果是字典，尝试将其转换为DataFrame
+                            if all(isinstance(v, list) for v in json_data.values()):
+                                # 如果所有值都是列表，作为列数据处理
+                                df = pd.DataFrame(json_data)
+                            else:
+                                # 否则作为单行数据处理
+                                df = pd.DataFrame([json_data])
+                        else:
+                            raise ValueError("不支持的JSON格式")
+            
+            if df is None or df.empty:
+                return {
+                    "error": "无法读取文件数据或文件为空"
+                }
+
+        return {
+            "success": True,
+            "data_info": data_info
+        }
+    except Exception as e:
+        print(f"文件分析出错: {str(e)}")
+        return {
+            "error": f"文件分析出错: {str(e)}"
+        }
+
+async def analyze_data_with_ai(*, file_path: str, question: str, data_info: dict = None):
     """使用AI分析文件数据
 
     Args:

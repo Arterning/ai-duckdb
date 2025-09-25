@@ -191,8 +191,8 @@
                             <span class="font-semibold text-blue-400">AI助手</span>
                         </div>
                         <div class="text-gray-300">
-                            欢迎使用AI数据分析助手！上传您的数据文件（支持CSV、Excel、Parquet、JSON格式），然后提出问题，我将为您生成SQL查询并分析数据。
-                        </div>
+                        欢迎使用AI数据分析助手！先上传您的数据文件（支持CSV、Excel、Parquet、JSON格式），然后从下拉框选择已上传文件，再提出问题，我将为您生成SQL查询并分析数据。
+                    </div>
                     </div>
                 </div>
             </div>
@@ -208,6 +208,10 @@
                             <p class="text-gray-400">点击选择文件或拖拽到此处</p>
                             <p class="text-sm text-gray-500 mt-1">支持 CSV, Excel, Parquet, JSON 格式</p>
                         </div>
+                        <div id="uploadingStatus" class="hidden">
+                            <i class="fas fa-spinner fa-spin text-3xl text-blue-400 mb-2"></i>
+                            <p class="text-blue-400">正在上传并分析文件...</p>
+                        </div>
                         <div id="fileInfo" class="hidden">
                             <i class="fas fa-file text-3xl text-green-400 mb-2"></i>
                             <p class="text-green-400" id="fileName"></p>
@@ -215,6 +219,15 @@
                                 <i class="fas fa-trash mr-1"></i>移除文件
                             </button>
                         </div>
+                    </div>
+
+                    <!-- 文件选择区域 -->
+                    <div class="mb-4">
+                        <label for="selectedFile" class="block text-gray-300 mb-2">已上传文件:</label>
+                        <select id="selectedFile" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">请选择文件或上传新文件</option>
+                            <!-- 已上传文件将通过JS动态添加 -->
+                        </select>
                     </div>
 
                     <!-- 问题输入 -->

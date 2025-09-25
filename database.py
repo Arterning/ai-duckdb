@@ -2,6 +2,7 @@ import sqlite3
 import json
 from datetime import datetime
 import os
+import duckdb
 
 class ChatDatabase:
     def __init__(self, db_path='chat_history.db'):
@@ -22,18 +23,32 @@ class ChatDatabase:
             )
         ''')
 
+        # 创建文件表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS files (
+                id TEXT PRIMARY KEY,
+                session_id TEXT,
+                filename TEXT,
+                filepath TEXT,
+                data_info TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (session_id) REFERENCES sessions (id)
+            )
+        ''')
+
         # 创建聊天记录表
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS chat_records (
                 id TEXT PRIMARY KEY,
                 session_id TEXT,
+                file_id TEXT,
                 timestamp TIMESTAMP,
                 question TEXT,
-                filename TEXT,
                 result TEXT,
                 markdown_result TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (session_id) REFERENCES sessions (id)
+                FOREIGN KEY (session_id) REFERENCES sessions (id),
+                FOREIGN KEY (file_id) REFERENCES files (id)
             )
         ''')
 
@@ -53,7 +68,87 @@ class ChatDatabase:
         conn.commit()
         conn.close()
 
-    def save_chat_record(self, session_id, chat_record):
+    def save_file_info(self, session_id, file_info):
+        """保存文件信息"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        # 确保会话存在
+        cursor.execute('SELECT id FROM sessions WHERE id = ?', (session_id,))
+        if not cursor.fetchone():
+            self.create_session(session_id)
+
+        # 保存文件信息
+        cursor.execute('''
+            INSERT INTO files
+            (id, session_id, filename, filepath, data_info)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (
+            file_info['id'],
+            session_id,
+            file_info['filename'],
+            file_info['filepath'],
+            json.dumps(file_info['data_info'], ensure_ascii=False)
+        ))
+
+        # 更新会话的最后更新时间
+        cursor.execute('''
+            UPDATE sessions SET updated_at = ? WHERE id = ?
+        ''', (datetime.now(), session_id))
+
+        conn.commit()
+        conn.close()
+
+    def get_files(self, session_id):
+        """获取指定会话的所有文件"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT id, filename, created_at
+            FROM files
+            WHERE session_id = ?
+            ORDER BY created_at DESC
+        ''', (session_id,))
+
+        files = []
+        for row in cursor.fetchall():
+            file = {
+                'id': row[0],
+                'filename': row[1],
+                'created_at': row[2]
+            }
+            files.append(file)
+
+        conn.close()
+        return files
+
+    def get_file_detail(self, file_id):
+        """获取文件详情"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT id, filename, filepath, data_info
+            FROM files
+            WHERE id = ?
+        ''', (file_id,))
+
+        row = cursor.fetchone()
+        if not row:
+            return None
+
+        file_detail = {
+            'id': row[0],
+            'filename': row[1],
+            'filepath': row[2],
+            'data_info': json.loads(row[3]) if row[3] else {}
+        }
+
+        conn.close()
+        return file_detail
+
+    def save_chat_record(self, session_id, file_id, chat_record):
         """保存聊天记录"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -66,14 +161,14 @@ class ChatDatabase:
         # 保存聊天记录
         cursor.execute('''
             INSERT INTO chat_records
-            (id, session_id, timestamp, question, filename, result, markdown_result)
+            (id, session_id, file_id, timestamp, question, result, markdown_result)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', (
             chat_record['id'],
             session_id,
+            file_id,
             chat_record['timestamp'],
             chat_record['question'],
-            chat_record['filename'],
             json.dumps(chat_record['result'], ensure_ascii=False),
             chat_record['markdown_result']
         ))
@@ -92,10 +187,11 @@ class ChatDatabase:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT id, timestamp, question, filename, result, markdown_result
-            FROM chat_records
-            WHERE session_id = ?
-            ORDER BY timestamp ASC
+            SELECT cr.id, cr.timestamp, cr.question, f.filename, cr.result, cr.markdown_result
+            FROM chat_records cr
+            LEFT JOIN files f ON cr.file_id = f.id
+            WHERE cr.session_id = ?
+            ORDER BY cr.timestamp ASC
         ''', (session_id,))
 
         records = []

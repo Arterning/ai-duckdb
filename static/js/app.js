@@ -10,6 +10,7 @@ $(document).ready(function() {
     function init() {
         loadAllSessions();
         loadChatHistory();
+        loadFilesList();
         setupEventHandlers();
     }
 
@@ -68,6 +69,11 @@ $(document).ready(function() {
                 $('#uploadForm').submit();
             }
         });
+
+        // 会话切换时重新加载文件列表
+        $('#chatHistory').on('click', '.session-item', function() {
+            setTimeout(loadFilesList, 500);
+        });
     }
 
     // 处理文件选择
@@ -98,6 +104,81 @@ $(document).ready(function() {
         $('#fileInfo').removeClass('hidden');
         $('#fileName').text(file.name);
         $('#dragArea').addClass('tech-glow');
+
+        // 上传文件但不提问
+        uploadFileOnly();
+    }
+
+    // 上传文件但不提问
+    function uploadFileOnly() {
+        if (!selectedFile) return;
+
+        // 显示上传状态
+        $('#uploadingStatus').removeClass('hidden');
+        $('#fileInfo').addClass('hidden');
+        $('#dropText').addClass('hidden');
+
+        // 准备表单数据
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        // 发送请求
+        $.ajax({
+            url: '/api/upload',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            timeout: 60000,
+            success: function(response) {
+                $('#uploadingStatus').addClass('hidden');
+                if (response.success) {
+                    loadFilesList(); // 重新加载文件列表
+                    // 显示文件信息
+                    $('#fileInfo').removeClass('hidden');
+                    addMessage('user', '已上传文件：' + selectedFile.name, selectedFile.name);
+                    removeFile(); // 重置上传区域
+                } else {
+                    showError(response.error || '文件上传失败');
+                    $('#fileInfo').removeClass('hidden');
+                    $('#dropText').removeClass('hidden');
+                }
+            },
+            error: function(xhr) {
+                $('#uploadingStatus').addClass('hidden');
+                $('#fileInfo').removeClass('hidden');
+                $('#dropText').removeClass('hidden');
+                let errorMsg = '服务器错误';
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMsg = xhr.responseJSON.error;
+                } else if (xhr.status === 413) {
+                    errorMsg = '文件太大，请选择较小的文件';
+                } else if (xhr.status === 0) {
+                    errorMsg = '网络连接失败';
+                }
+                showError(errorMsg);
+            }
+        });
+    }
+
+    // 加载已上传文件列表
+    function loadFilesList() {
+        $.get('/api/files')
+            .done(function(response) {
+                const files = response.files || [];
+                const selectElement = $('#selectedFile');
+                
+                // 清空选项，保留默认选项
+                selectElement.find('option:not(:first)').remove();
+                
+                // 添加文件选项
+                files.forEach(file => {
+                    selectElement.append(`<option value="${file.id}">${file.filename}</option>`);
+                });
+            })
+            .fail(function() {
+                console.error('加载文件列表失败');
+            });
     }
 
     // 移除文件
@@ -111,12 +192,14 @@ $(document).ready(function() {
 
     // 提交分析
     function submitAnalysis() {
-        if (!selectedFile) {
-            showError('请先选择一个文件。');
+        const selectedFileId = $('#selectedFile').val();
+        const question = $('#questionInput').val().trim();
+        
+        if (!selectedFileId) {
+            showError('请先选择一个已上传的文件。');
             return;
         }
 
-        const question = $('#questionInput').val().trim();
         if (!question) {
             showError('请输入您的问题。');
             return;
@@ -125,28 +208,28 @@ $(document).ready(function() {
         // 显示加载状态
         showLoading(true);
 
+        // 获取选中的文件名
+        const filename = $('#selectedFile option:selected').text();
+        
         // 添加用户消息到聊天区域
-        addMessage('user', question, selectedFile.name);
-
-        // 准备表单数据
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        formData.append('question', question);
+        addMessage('user', question, filename);
 
         // 发送请求
         $.ajax({
-            url: '/api/upload',
+            url: '/api/ask_question',
             type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
+            contentType: 'application/json',
+            data: JSON.stringify({
+                file_id: selectedFileId,
+                question: question
+            }),
             timeout: 60000,
             success: function(response) {
                 showLoading(false);
                 if (response.success) {
                     addMessage('ai', response.markdown_result, null, response.chat_id);
                     loadAllSessions(); // 重新加载会话列表
-                    resetForm();
+                    $('#questionInput').val(''); // 只清空问题输入框，保留文件选择
                 } else {
                     showError(response.error || '分析失败');
                 }
@@ -156,8 +239,6 @@ $(document).ready(function() {
                 let errorMsg = '服务器错误';
                 if (xhr.responseJSON && xhr.responseJSON.error) {
                     errorMsg = xhr.responseJSON.error;
-                } else if (xhr.status === 413) {
-                    errorMsg = '文件太大，请选择较小的文件';
                 } else if (xhr.status === 0) {
                     errorMsg = '网络连接失败';
                 }
@@ -316,6 +397,7 @@ $(document).ready(function() {
                 if (response.success) {
                     currentSessionId = sessionId;
                     loadChatHistory();
+                    loadFilesList(); // 加载当前会话的文件列表
 
                     // 高亮当前选中的会话
                     $('.session-item').removeClass('bg-blue-700');
@@ -341,8 +423,9 @@ $(document).ready(function() {
                     // 重置表单
                     resetForm();
 
-                    // 重新加载会话列表以显示新会话
+                    // 重新加载会话列表和文件列表以显示新会话
                     loadAllSessions();
+                    loadFilesList();
 
                     // 清除会话高亮
                     $('.session-item').removeClass('bg-blue-700');
@@ -356,6 +439,7 @@ $(document).ready(function() {
     // 重置表单
     function resetForm() {
         $('#questionInput').val('');
+        $('#selectedFile').val(''); // 重置文件选择
         removeFile();
     }
 
