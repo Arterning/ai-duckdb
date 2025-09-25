@@ -7,29 +7,25 @@ from google import genai
 import duckdb
 
 
-async def analyze_file(*, file_path: str):
-    """分析文件并返回数据概要信息
-
+async def load_data_from_file(file_path: str):
+    """根据文件类型加载数据到pandas DataFrame
+    
     Args:
         file_path (str): 文件路径
-
+        
     Returns:
-        dict: 包含数据概要信息的字典
+        tuple: (DataFrame, str) 数据和错误信息
     """
     # 检查文件是否存在
     if not os.path.exists(file_path):
-        return {
-            "error": "文件不存在"
-        }
+        return None, "文件不存在"
+        
+    # 检查文件类型是否支持数据分析
+    file_suffix = os.path.splitext(file_path)[1].lower()
+    if file_suffix not in ['.parquet', '.csv', '.xlsx', '.xls', '.json']:
+        return None, "文件类型不支持数据分析，仅支持 parquet、csv、xlsx、xls、json 文件"
 
     try:
-        # 检查文件类型是否支持数据分析
-        file_suffix = os.path.splitext(file_path)[1].lower()
-        if file_suffix not in ['.parquet', '.csv', '.xlsx', '.xls', '.json']:
-            return {
-                "error": "文件类型不支持数据分析，仅支持 parquet、csv、xlsx、xls、json 文件"
-            }
-
         # 读取文件
         with open(file_path, 'rb') as f:
             file_bytes = f.read()
@@ -74,10 +70,30 @@ async def analyze_file(*, file_path: str):
                         raise ValueError("不支持的JSON格式")
         
         if df is None or df.empty:
+            return None, "无法读取文件数据或文件为空"
+            
+        return df, None
+    except Exception as e:
+        return None, f"文件加载失败: {str(e)}"
+
+
+async def analyze_file(*, file_path: str):
+    """分析文件并返回数据概要信息
+
+    Args:
+        file_path (str): 文件路径
+
+    Returns:
+        dict: 包含数据概要信息的字典
+    """
+    try:
+        # 加载数据
+        df, error = await load_data_from_file(file_path)
+        if error:
             return {
-                "error": "无法读取文件数据或文件为空"
+                "error": error
             }
-        
+            
         # 生成数据概要信息
         data_info = {
             "行数": len(df),
@@ -87,7 +103,6 @@ async def analyze_file(*, file_path: str):
             "前5行数据": df.head().to_dict('records')
         }
         
-
         return {
             "success": True,
             "data_info": data_info
@@ -104,24 +119,29 @@ async def analyze_data_with_ai(*, file_path: str, question: str, data_info: dict
     Args:
         file_path (str): 文件路径
         question (str): 用户问题
+        data_info (dict): 可选，数据概要信息
 
     Returns:
         dict: 包含分析结果的字典
     """
-    # 检查文件是否存在
-    if not os.path.exists(file_path):
+    # 加载数据
+    df, error = await load_data_from_file(file_path)
+    if error:
         return {
-            "error": "文件不存在"
+            "error": error
         }
 
-    # 检查文件类型是否支持数据分析
-    file_suffix = os.path.splitext(file_path)[1].lower()
-    if file_suffix not in ['.parquet', '.csv', '.xlsx', '.xls', '.json']:
-        return {
-            "error": "文件类型不支持数据分析，仅支持 parquet、csv、xlsx、xls、json 文件"
+    # 如果没有提供data_info，则生成数据概要信息
+    if data_info is None:
+        # 生成数据概要信息
+        data_info = {
+            "行数": len(df),
+            "列数": len(df.columns),
+            "列名": list(df.columns),
+            "数据类型": {col: str(dtype) for col, dtype in df.dtypes.items()},
+            "前5行数据": df.head().to_dict('records')
         }
 
-        
     # 构建 AI 提示词
     file_name = os.path.basename(file_path)
     system_context = f"""你是一个数据分析专家。用户上传了一个名为"{file_name}"的数据文件，包含以下信息：
@@ -152,12 +172,12 @@ async def analyze_data_with_ai(*, file_path: str, question: str, data_info: dict
         # 生成 SQL
         prompt = f"{system_context}\n\n{user_input}"
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
-        )
+        # response = client.models.generate_content(
+        #     model="gemini-2.5-flash",
+        #     contents=prompt
+        # )
         
-        sql_query = response.text
+        sql_query = "select * from data_table"
 
     except Exception as e:
         return {
