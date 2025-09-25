@@ -206,7 +206,7 @@ async def analyze_data_with_ai(*, file_path: str, question: str, data_info: dict
 
     if not sql_query:
         return {
-            "error": "AI生成SQL失败"
+            "error": "SQL查询生成失败"
         }
     
     # 清理SQL语句
@@ -218,13 +218,29 @@ async def analyze_data_with_ai(*, file_path: str, question: str, data_info: dict
     sql_query = sql_query.strip()
     
     # 使用DuckDB执行SQL查询，连接到磁盘数据库
-    conn = duckdb.connect(data_info["db_path"])
-    
-    # 执行SQL查询
-    result = conn.execute(sql_query).fetchdf()
-    
-    # 关闭连接
-    conn.close()
+    try:
+        # 检查数据库路径是否存在
+        db_path = data_info.get("db_path")
+        if not db_path:
+            return {
+                "error": "数据库路径不存在"
+            }
+        
+        # 检查数据库文件是否存在
+        if not os.path.exists(db_path):
+            return {
+                "error": f"数据库文件不存在: {db_path}"
+            }
+            
+        # 连接到数据库并执行查询
+        conn = duckdb.connect(db_path)
+        result = conn.execute(sql_query).fetchdf()
+        conn.close()
+        
+    except Exception as e:
+        return {
+            "error": f"DuckDB查询执行失败: {str(e)}"
+        }
     
     # 返回结果
     return {
