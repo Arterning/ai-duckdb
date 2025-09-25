@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 import asyncio
 from werkzeug.utils import secure_filename
-from doc import analyze_data_with_ai
+from doc import analyze_file, analyze_data_with_ai
 from database import ChatDatabase
 
 app = Flask(__name__)
