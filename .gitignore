@@ -12,4 +12,7 @@ wheels/
 # Upload
 uploads
 
+
 *.db
+
+.env

@@ -7,6 +7,9 @@ import asyncio
 from werkzeug.utils import secure_filename
 from doc import analyze_data_with_ai
 from database import ChatDatabase
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'

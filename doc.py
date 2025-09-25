@@ -2,8 +2,13 @@ import duckdb
 import pandas as pd
 import pyarrow.parquet as pq
 from io import BytesIO
-import os
 from google import genai
+from dotenv import load_dotenv
+import os
+
+load_dotenv(override=True)
+
+API_KEY=os.environ.get("GEMINI_API_KEY")
 
 
 async def analyze_data_with_ai(*, file_path: str, question: str):
@@ -112,7 +117,7 @@ async def analyze_data_with_ai(*, file_path: str, question: str):
         # 调用 Gemini API 生成 SQL
         try:
             # 初始化 Gemini
-            client = genai.Client()
+            client = genai.Client(api_key=API_KEY)
 
             # 生成 SQL
             prompt = f"{system_context}\n\n{user_input}"
