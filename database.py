@@ -218,15 +218,16 @@ class ChatDatabase:
             SELECT s.id, s.created_at, s.updated_at,
                    COUNT(cr.id) as chat_count,
                    cr.question as latest_question,
-                   cr.filename as latest_filename
+                   f.filename as latest_filename
             FROM sessions s
             LEFT JOIN chat_records cr ON s.id = cr.session_id
+            LEFT JOIN files f ON cr.file_id = f.id
             LEFT JOIN (
                 SELECT session_id, MAX(timestamp) as max_timestamp
                 FROM chat_records
                 GROUP BY session_id
             ) latest ON s.id = latest.session_id AND cr.timestamp = latest.max_timestamp
-            GROUP BY s.id, s.created_at, s.updated_at, cr.question, cr.filename
+            GROUP BY s.id, s.created_at, s.updated_at, cr.question, f.filename
             ORDER BY s.updated_at DESC
         ''', ())
 

@@ -172,12 +172,12 @@ async def analyze_data_with_ai(*, file_path: str, question: str, data_info: dict
         # 生成 SQL
         prompt = f"{system_context}\n\n{user_input}"
 
-        # response = client.models.generate_content(
-        #     model="gemini-2.5-flash",
-        #     contents=prompt
-        # )
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
         
-        sql_query = "select * from data_table"
+        sql_query = response.text
 
     except Exception as e:
         return {
