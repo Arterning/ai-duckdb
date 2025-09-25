@@ -221,6 +221,7 @@ $(document).ready(function() {
             url: '/api/ask_question',
             type: 'POST',
             contentType: 'application/json',
+            dataType: 'json',  // 明确指定数据类型为JSON
             data: JSON.stringify({
                 file_id: selectedFileId,
                 question: question
@@ -236,15 +237,32 @@ $(document).ready(function() {
                     showError(response.error || '分析失败');
                 }
             },
-            error: function(xhr) {
+            error: function(xhr, status, error) {
                 showLoading(false);
-                let errorMsg = '服务器错误';
+                // 增加详细的错误日志输出，帮助调试
+                console.log('AJAX Error:', status, error);
+                console.log('XHR Status:', xhr.status);
+                console.log('XHR Response:', xhr.responseText);
+                
+                let errorMsg = '';
                 if (xhr.responseJSON && xhr.responseJSON.error) {
                     errorMsg = xhr.responseJSON.error;
                 } else if (xhr.status === 0) {
                     errorMsg = '网络连接失败';
+                } else if (xhr.status === 500) {
+                    errorMsg = '服务器内部错误';
+                } else if (status === 'timeout') {
+                    errorMsg = '请求超时，请重试';
+                } else if (status === 'parsererror') {
+                    errorMsg = '数据解析错误';
+                    console.log('Response Text:', xhr.responseText);
+                } else {
+                    errorMsg = `请求失败: ${status} (${xhr.status})`;
                 }
-                showError(errorMsg);
+                
+                if (errorMsg) {
+                    showError(errorMsg);
+                }
             }
         });
     }

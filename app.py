@@ -158,7 +158,6 @@ def upload_file():
             'success': True,
             'file_id': file_info['id'],
             'filename': filename,
-            'data_info': result['data_info']
         })
 
     except Exception as e:
@@ -222,11 +221,13 @@ def ask_question():
         return jsonify({
             'success': True,
             'chat_id': chat_record['id'],
-            'result': result,
             'markdown_result': markdown_result
         })
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"Error: {str(e)}")
         return jsonify({'error': f'服务器错误: {str(e)}'}), 500
 
 @app.route('/api/chat_history')
