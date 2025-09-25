@@ -148,7 +148,7 @@ $(document).ready(function() {
                 $('#uploadingStatus').addClass('hidden');
                 $('#fileInfo').removeClass('hidden');
                 $('#dropText').removeClass('hidden');
-                let errorMsg = '服务器错误';
+                let errorMsg = '';
                 if (xhr.responseJSON && xhr.responseJSON.error) {
                     errorMsg = xhr.responseJSON.error;
                 } else if (xhr.status === 413) {
@@ -156,7 +156,9 @@ $(document).ready(function() {
                 } else if (xhr.status === 0) {
                     errorMsg = '网络连接失败';
                 }
-                showError(errorMsg);
+                if (errorMsg) {
+                    showError(errorMsg);
+                }
             }
         });
     }

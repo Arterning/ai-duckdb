@@ -162,6 +162,7 @@ def upload_file():
         })
 
     except Exception as e:
+        print(f"Error: {str(e)}")
         return jsonify({'error': f'服务器错误: {str(e)}'}), 500
 
 @app.route('/api/ask_question', methods=['POST'])

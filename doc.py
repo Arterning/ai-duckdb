@@ -5,6 +5,7 @@ from io import BytesIO
 import os
 from google import genai
 import duckdb
+import hashlib
 
 
 async def load_data_from_file(file_path: str):
@@ -78,7 +79,7 @@ async def load_data_from_file(file_path: str):
 
 
 async def analyze_file(*, file_path: str):
-    """分析文件并返回数据概要信息
+    """分析文件并返回数据概要信息，同时将数据保存到DuckDB磁盘数据库
 
     Args:
         file_path (str): 文件路径
@@ -103,6 +104,18 @@ async def analyze_file(*, file_path: str):
             "前5行数据": df.head().to_dict('records')
         }
         
+        # 生成唯一的数据库文件路径
+        db_filename = f"data_{os.path.splitext(os.path.basename(file_path))[0]}.duckdb"
+        db_path = os.path.join(os.path.dirname(file_path), db_filename)
+        
+        # 将数据保存到DuckDB磁盘数据库
+        conn = duckdb.connect(db_path)
+        conn.execute("CREATE OR REPLACE TABLE data_table AS SELECT * FROM df")
+        conn.close()
+        
+        # 将数据库路径添加到返回结果中
+        data_info["db_path"] = db_path
+        
         return {
             "success": True,
             "data_info": data_info
@@ -119,28 +132,35 @@ async def analyze_data_with_ai(*, file_path: str, question: str, data_info: dict
     Args:
         file_path (str): 文件路径
         question (str): 用户问题
-        data_info (dict): 可选，数据概要信息
+        data_info (dict): 可选，数据概要信息（包含db_path）
 
     Returns:
         dict: 包含分析结果的字典
     """
-    # 加载数据
-    df, error = await load_data_from_file(file_path)
-    if error:
-        return {
-            "error": error
-        }
-
-    # 如果没有提供data_info，则生成数据概要信息
+    # 如果没有提供data_info，则先分析文件获取数据概要和数据库路径
     if data_info is None:
-        # 生成数据概要信息
-        data_info = {
-            "行数": len(df),
-            "列数": len(df.columns),
-            "列名": list(df.columns),
-            "数据类型": {col: str(dtype) for col, dtype in df.dtypes.items()},
-            "前5行数据": df.head().to_dict('records')
-        }
+        analyze_result = await analyze_file(file_path=file_path)
+        if "error" in analyze_result:
+            return analyze_result
+        data_info = analyze_result["data_info"]
+    
+    # 检查data_info中是否包含数据库路径
+    if "db_path" not in data_info:
+        # 如果没有数据库路径，生成唯一的数据库文件路径
+        db_filename = f"data_{os.path.splitext(os.path.basename(file_path))[0]}.duckdb"
+        db_path = os.path.join(os.path.dirname(file_path), db_filename)
+        data_info["db_path"] = db_path
+        
+        # 加载数据并保存到数据库
+        df, error = await load_data_from_file(file_path)
+        if error:
+            return {
+                "error": error
+            }
+            
+        conn = duckdb.connect(db_path)
+        conn.execute("CREATE OR REPLACE TABLE data_table AS SELECT * FROM df")
+        conn.close()
 
     # 构建 AI 提示词
     file_name = os.path.basename(file_path)
@@ -197,11 +217,8 @@ async def analyze_data_with_ai(*, file_path: str, question: str, data_info: dict
         sql_query = sql_query[:-3]
     sql_query = sql_query.strip()
     
-    # 使用DuckDB执行SQL查询
-    conn = duckdb.connect(':memory:')
-    
-    # 将DataFrame注册为表
-    conn.register('data_table', df)
+    # 使用DuckDB执行SQL查询，连接到磁盘数据库
+    conn = duckdb.connect(data_info["db_path"])
     
     # 执行SQL查询
     result = conn.execute(sql_query).fetchdf()
